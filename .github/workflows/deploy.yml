@@ -21,6 +21,8 @@ jobs:
           script: |
             cd ~/moodle-lfm
             git pull origin main || true
+            docker stop  moodle-lfm-web-1
+            docker rm -f moodle-lfm-web-1
             docker compose pull
             docker compose up -d
             docker image prune -f 2>/dev/null || true
