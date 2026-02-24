@@ -1,8 +1,6 @@
-version: '3.9'
-
 services:
   moodle:
-    image: bitnami/moodle:5
+    image: bitnami/moodle:latest
     container_name: moodle_app
     restart: unless-stopped
     ports:
@@ -22,7 +20,7 @@ services:
       - MOODLE_DATABASE_PORT_NUMBER=5432
       - MOODLE_DATABASE_NAME=moodle_db
       - MOODLE_DATABASE_USER=moodle_user
-      - MOODLE_DATABASE_PASSWORD=moodle_db_secure_pass_2026!
+      - MOODLE_DATABASE_PASSWORD=moodle_lafaommao123456789
       - REDIS_HOST=redis
       - REDIS_PORT_NUMBER=6379
       - PHP_MEMORY_LIMIT=512M
@@ -69,7 +67,7 @@ services:
     environment:
       POSTGRES_DB: moodle_db
       POSTGRES_USER: moodle_user
-      POSTGRES_PASSWORD: moodle_db_secure_pass_2026!
+      POSTGRES_PASSWORD: moodle_lafaommao123456789
     volumes:
       - moodle_pg_data:/var/lib/postgresql/data
     networks:
@@ -102,7 +100,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin_secret_2026
+      - GF_SECURITY_ADMIN_PASSWORD=lafaommao123456789
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
