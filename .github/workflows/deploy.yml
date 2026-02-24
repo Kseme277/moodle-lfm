@@ -1,4 +1,4 @@
-name: moodle-lfm Deploy Test
+name: Deploy Moodle LFM Stack
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Déploiement sur VPS
+      - name: Déploiement sur le serveur VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -20,9 +20,17 @@ jobs:
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           script: |
             cd ~/moodle-lfm
-            git pull origin main || true
-            sudo docker stop moodle-lfm-web-1 || true
-            sudo docker rm -f moodle-lfm-web-1 || true
+            
+            # Récupérer les derniers changements
+            git pull origin main
+            
+            # S'assurer que les scripts sont exécutables
+            chmod +x scripts/backup.sh
+            
+            # Mettre à jour et relancer la stack complète
+            # Note: Docker Compose préserve les volumes existants par défaut
             sudo docker compose pull
-            sudo docker compose up -d --force-recreate
-            sudo docker image prune -f 2>/dev/null || true
+            sudo docker compose up -d --remove-orphans
+            
+            # Nettoyage des images inutilisées pour économiser de l'espace sur le VPS
+            sudo docker image prune -f
