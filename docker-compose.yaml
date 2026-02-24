@@ -1,0 +1,132 @@
+version: '3.9'
+
+services:
+  moodle:
+    image: bitnami/moodle:5
+    container_name: moodle_app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"          # Port exposé sur l'hôte → Caddy reverse_proxy vers ce port
+      - "8443:8443"
+    environment:
+      # ... config précédente ...
+      - MOODLE_USERNAME=admin
+      - MOODLE_PASSWORD=lafaommao123456789
+      - MOODLE_EMAIL=admin@lafaom.com
+      - MOODLE_SITE_URL=https://moodle.lafaom-mao.org
+      - MOODLE_LANG=fr
+      - MOODLE_HTTPS=true
+      # ... config DB et Redis ...
+      - MOODLE_DATABASE_TYPE=pgsql
+      - MOODLE_DATABASE_HOST=moodle_db
+      - MOODLE_DATABASE_PORT_NUMBER=5432
+      - MOODLE_DATABASE_NAME=moodle_db
+      - MOODLE_DATABASE_USER=moodle_user
+      - MOODLE_DATABASE_PASSWORD=moodle_db_secure_pass_2026!
+      - REDIS_HOST=redis
+      - REDIS_PORT_NUMBER=6379
+      - PHP_MEMORY_LIMIT=512M
+      - PHP_MAX_EXECUTION_TIME=300
+      - PHP_UPLOAD_MAX_FILESIZE=500M
+      - PHP_POST_MAX_SIZE=500M
+      - PHP_MAX_INPUT_VARS=5000
+    volumes:
+      - moodle_data:/bitnami/moodle
+      - ./plugins/auth/jwtsso:/bitnami/moodle/auth/jwtsso:ro
+    depends_on:
+      moodle_db:
+        condition: service_healthy
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # Labels pour Ofelia : Sauvegarde tous les jours à 2h du matin
+    labels:
+      ofelia.enabled: "true"
+      ofelia.job-local.moodle-backup.schedule: "0 0 2 * * *"
+      ofelia.job-local.moodle-backup.command: "/bin/bash /scripts/backup.sh"
+
+  # --- CRON SCHEDULER ---
+  scheduler:
+    image: mcuadros/ofelia:latest
+    container_name: cron_scheduler
+    restart: unless-stopped
+    depends_on:
+      - moodle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./scripts:/scripts # On monte le dossier des scripts
+    networks:
+      - app_network
+
+  moodle_db:
+    image: postgres:16-alpine
+    container_name: moodle_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: moodle_db
+      POSTGRES_USER: moodle_user
+      POSTGRES_PASSWORD: moodle_db_secure_pass_2026!
+    volumes:
+      - moodle_pg_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moodle_user -d moodle_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # --- MONITORING STACK ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - app_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_secret_2026
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - app_network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - app_network
+
+volumes:
+  moodle_data:
+  moodle_pg_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  app_network:
+    external: true
