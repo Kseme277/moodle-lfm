@@ -1,6 +1,6 @@
 services:
   moodle:
-    image: bitnami/moodle:4
+    image: public.ecr.aws/bitnami/moodle:latest
     container_name: moodle_app
     restart: unless-stopped
     ports:
