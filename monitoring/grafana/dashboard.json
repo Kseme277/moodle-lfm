@@ -112,7 +112,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU Usage per Container",
+      "title": "Utilisation CPU par Container",
       "type": "timeseries"
     },
     {
@@ -204,7 +204,7 @@
           "refId": "A"
         }
       ],
-      "title": "Memory Usage per Container",
+      "title": "Utilisation Mémoire par Container",
       "type": "timeseries"
     },
     {
@@ -296,7 +296,7 @@
           "refId": "A"
         }
       ],
-      "title": "Network RX per Container",
+      "title": "Réseau Reçu (RX) par Container",
       "type": "timeseries"
     },
     {
@@ -388,7 +388,7 @@
           "refId": "A"
         }
       ],
-      "title": "Network TX per Container",
+      "title": "Réseau Transmis (TX) par Container",
       "type": "timeseries"
     }
   ],
@@ -397,7 +397,8 @@
   "style": "dark",
   "tags": [
     "docker",
-    "cadvisor"
+    "cadvisor",
+    "lafaom"
   ],
   "templating": {
     "list": []
@@ -408,8 +409,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Docker Container Metrics",
-  "uid": "docker_containers",
+  "title": "Métriques Containers Docker",
+  "uid": "docker_containers_fr",
   "version": 1,
   "weekStart": ""
 }

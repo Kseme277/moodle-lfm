@@ -1,39 +1,44 @@
 services:
+  # ============================================================================
+  # SERVICE : MOODLE (L'Application)
+  # C'est le coeur du système, plateforme de gestion de l'apprentissage (LMS).
+  # ============================================================================
   moodle:
     image: public.ecr.aws/bitnami/moodle:latest
     container_name: moodle_app
     restart: unless-stopped
     ports:
-      - "8080:8080"
-      - "8443:8443"
+      - "8080:8080" # Port standard pour l'accès web
+      - "8443:8443" # Port pour l'accès sécurisé HTTPS (si configuré)
     environment:
+      # --- Paramètres d'administration ---
       - MOODLE_USERNAME=admin
       - MOODLE_PASSWORD=lafaommao123456789
       - MOODLE_EMAIL=admin@lafaom.com
+      # --- Configuration URL et Base de données ---
+      # Caddy (le reverse proxy) redirigera moodle.lafaom-mao.org vers ce container.
       - MOODLE_SITE_URL=https://moodle.lafaom-mao.org
       - MOODLE_LANG=fr
       - MOODLE_HTTPS=true
+      # --- Connexion à la Base de Données (PostgreSQL) ---
       - MOODLE_DATABASE_TYPE=pgsql
       - MOODLE_DATABASE_HOST=moodle_db
       - MOODLE_DATABASE_PORT_NUMBER=5432
       - MOODLE_DATABASE_NAME=moodle_db
       - MOODLE_DATABASE_USER=moodle_user
       - MOODLE_DATABASE_PASSWORD=moodle_lafaommao123456789
-      - REDIS_HOST=redis
-      - REDIS_PORT_NUMBER=6379
-      - PHP_MEMORY_LIMIT=512M
+      # --- Optimisation des performances PHP ---
+      - PHP_MEMORY_LIMIT=512M # Recommandé pour Moodle 4+
       - PHP_MAX_EXECUTION_TIME=300
-      - PHP_UPLOAD_MAX_FILESIZE=500M
+      - PHP_UPLOAD_MAX_FILESIZE=500M # Permet d'uploader des contenus pédagogiques lourds
       - PHP_POST_MAX_SIZE=500M
       - PHP_MAX_INPUT_VARS=5000
     volumes:
       - moodle_data:/bitnami/moodle
       - moodledata_data:/bitnami/moodledata
-      # On commente temporairement le plugin pour forcer une installation propre
-      # - ./plugins/auth/jwtsso:/bitnami/moodle/auth/jwtsso:ro
     depends_on:
       moodle_db:
-        condition: service_healthy
+        condition: service_healthy # Attendre que la base soit totalement opérationnelle
     networks:
       - app_network
     healthcheck:
@@ -42,10 +47,15 @@ services:
       timeout: 10s
       retries: 3
     labels:
+      # Ofelia : Gestion des sauvegardes automatiques
       ofelia.enabled: "true"
-      ofelia.job-local.moodle-backup.schedule: "0 0 2 * * *"
+      ofelia.job-local.moodle-backup.schedule: "0 0 2 * * *" # Tous les jours à 2h du matin
       ofelia.job-local.moodle-backup.command: "/bin/bash /scripts/backup.sh"
 
+  # ============================================================================
+  # SERVICE : SCHEDULER (Ofelia)
+  # Planificateur de tâches Docker (Cron moderne).
+  # ============================================================================
   scheduler:
     image: mcuadros/ofelia:latest
     container_name: cron_scheduler
@@ -58,6 +68,10 @@ services:
     networks:
       - app_network
 
+  # ============================================================================
+  # SERVICE : MOODLE_DB (PostgreSQL)
+  # Stockage persistant des données de Moodle.
+  # ============================================================================
   moodle_db:
     image: postgres:16-alpine
     container_name: moodle_postgres
@@ -77,6 +91,10 @@ services:
       retries: 5
       start_period: 30s
 
+  # ============================================================================
+  # SERVICE : PROMETHEUS (Monitoring)
+  # Récupère et stocke les métriques de performance.
+  # ============================================================================
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -87,15 +105,21 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090" # Interface Prometheus pour le debug
     networks:
       - app_network
 
+  # ============================================================================
+  # SERVICE : GRAFANA (Tableau de bord)
+  # Permet de visualiser les métriques sur IP:3000.
+  # ============================================================================
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3000:3000" # Interface Graphique
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=lafaommao123456789
     volumes:
@@ -103,6 +127,10 @@ services:
     networks:
       - app_network
 
+  # ============================================================================
+  # SERVICE : CADVISOR (Collecteur)
+  # Analyse l'usage CPU/RAM de tous les containers Docker.
+  # ============================================================================
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
@@ -113,16 +141,20 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8081:8080" # Dashboard cAdvisor accessible sur port 8081
     networks:
       - app_network
 
+# --- Volumes persistants ---
 volumes:
-  moodle_data:
-  moodle_pg_data:
-  moodledata_data:
-  prometheus_data:
-  grafana_data:
+  moodle_data:      
+  moodle_pg_data:   
+  moodledata_data:  
+  prometheus_data: 
+  grafana_data:    
 
+# --- Réseau partagé ---
 networks:
   app_network:
-    external: true
+    external: true # Doit être créé au préalable

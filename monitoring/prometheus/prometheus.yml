@@ -1,26 +1,33 @@
+# ==============================================================================
+# Configuration Prometheus - Stack Moodle lafaom-mao
+# Ce fichier définit quels services Prometheus doit surveiller (Scraping).
+# ==============================================================================
+
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 15s     # Récupération des données toutes les 15 secondes
+  evaluation_interval: 15s # Évaluation des alertes (si configurées)
 
 scrape_configs:
+  # 1. Propre métriques de Prometheus
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
+  # 2. Métriques des containers Docker via cAdvisor
+  # Analyse l'usage CPU, RAM et Réseau de chaque container.
   - job_name: 'cadvisor'
     static_configs:
       - targets: ['cadvisor:8080']
 
+  # 3. Métriques de la machine hôte via Node Exporter
+  # (Utile si vous installez node_exporter sur le VPS)
   - job_name: 'node_exporter'
     static_configs:
       - targets: ['node_exporter:9100']
 
+  # 4. Métriques spécifiques à Moodle
+  # Surveille l'état du serveur web (Apache/PHP) sur le port 8080.
   - job_name: 'moodle'
     metrics_path: '/server-status'
     static_configs:
       - targets: ['moodle:8080']
-
-  - job_name: 'backend'
-    metrics_path: '/metrics'
-    static_configs:
-      - targets: ['app:8000']
