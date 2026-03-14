@@ -21,8 +21,9 @@ jobs:
           script: |
             cd ~/moodle-lfm
             
-            # Récupérer les derniers changements
-            git pull origin main
+            # Synchronisation forcée avec le dépôt (écrase les changements locaux sur le VPS)
+            git fetch origin main
+            git reset --hard origin/main
             
             # S'assurer que les scripts sont exécutables
             chmod +x scripts/backup.sh
