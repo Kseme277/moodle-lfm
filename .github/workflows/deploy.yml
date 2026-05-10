@@ -1,18 +1,62 @@
-name: Deploy Moodle LFM Stack
+name: Build and Deploy Moodle
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/moodle
+
 jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Déploiement sur le serveur VPS
+      - name: Déploiement sur le serveur V
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -21,17 +65,18 @@ jobs:
           script: |
             cd ~/moodle-lfm
             
-            # Synchronisation forcée avec le dépôt (écrase les changements locaux sur le VPS)
+            # Synchronisation du docker-compose et scripts
             git fetch origin main
             git reset --hard origin/main
             
-            # S'assurer que les scripts sont exécutables
-            chmod +x scripts/backup.sh
+            # Connexion au registre sur le VPS
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # Mettre à jour et relancer la stack complète
-            # Note: Docker Compose préserve les volumes existants par défaut
-            sudo docker compose pull
-            sudo docker compose up -d --remove-orphans
+            # Récupérer l'image du registre
+            # On définit MOODLE_IMAGE pour docker compose
+            export MOODLE_IMAGE=ghcr.io/${{ github.repository }}/moodle:latest
+            sudo -E docker compose pull
+            sudo -E docker compose up -d --remove-orphans
             
-            # Nettoyage des images inutilisées pour économiser de l'espace sur le VPS
+            # Nettoyage
             sudo docker image prune -f
